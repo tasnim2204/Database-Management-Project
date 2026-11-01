@@ -1,0 +1,5 @@
+export PGUSER=dbuserf26
+export PGPASSWORD=dbfall26
+export PGHOST=localhost
+export PGPORT=8901
+export PGDATABASE=dbfall26

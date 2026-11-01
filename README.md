@@ -33,12 +33,12 @@ PGPASSWORD=pj4qwMtMhq0qMh8Tny8prDPo4vzEdbOF psql -h dpg-dbias67lk1mc73fpaj0g-a.v
 # Project Structure
 
 Database-Management-Project/\
-├── ETL/\
-│   ├── phase1_official_dataset/\
-│   │   ├── (.parquet files)\
-│   ├── extract.py\
-│   ├── transform.py\
-│   └── load.py\
+`├── ETL/`\
+`│   ├── phase1_official_dataset/`\
+`│   │   ├── (.parquet files)`\
+`│   ├── extract.py`\
+`│   ├── transform.py`\
+`│   └── load.py`
 
 # Database Environment Variables
 Set these before running the ETL scripts:
