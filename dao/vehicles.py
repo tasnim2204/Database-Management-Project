@@ -137,7 +137,7 @@ class VehicleDAO:
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
             query = """
-            DELETE FROM VEHICLE
+            DELETE FROM vehicle
             WHERE vehicle_id = %s
             RETURNING vehicle_id"""
             cur.execute(query, (vehicle_id,))

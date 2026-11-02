@@ -29,17 +29,17 @@ class VehicleHandler:
             else:
                 new_v = VehicleCreate.model_validate(new_vehicle_data) # validates the object to be an instance of VehicleCreate
         except ValidationError:
-            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape. VALIDATION")
+            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
         
         if new_v.vehicle_status_id <= 0 or new_v.vehicle_type_id <= 0: #no es un valor posible
-            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape. NOT VALID VALUE")
+            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
 
         plate_number = new_v.plate_number.strip()
         if plate_number == "": #no tiene valor
-            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape. PLATE")
+            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
 
         if new_v.year < 1950 or new_v.year > 2100:
-            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape. YEARTHING")
+            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
 
         make = new_v.make.strip() if new_v.make is not None else None
         model = new_v.model.strip() if new_v.model is not None else None
@@ -48,7 +48,7 @@ class VehicleHandler:
             raise HTTPException(status_code=404, detail="Referenced vehicle_type_id or vehicle_status_id does not exist.")
 
         if dao.plate_in_use(plate_number):
-            raise HTTPException(status_code=409, detail="plate_number already exists. IN USE")
+            raise HTTPException(status_code=409, detail="plate_number already exists.")
 
         payload = VehicleCreate(vehicle_type_id=new_v.vehicle_type_id, vehicle_status_id=new_v.vehicle_status_id, 
                                 plate_number=plate_number, make=make, model=model, year=new_v.year)
@@ -56,7 +56,7 @@ class VehicleHandler:
         try:
             return dao.create_vehicle(payload.model_dump())
         except Exception:
-            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.EXCEPTION")
+            raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
 
     def get_vehicles(self, limit, offset, status=None, plate_number=None):
         dao = VehicleDAO()
@@ -81,7 +81,7 @@ class VehicleHandler:
                 validated_vehicle = VehicleUpdate.model_validate(new_vehicle_data) # validates the object to be an instance of VehicleUpdate
                 new_v = validated_vehicle
         except ValidationError:
-            raise HTTPException(status_code=400, detail="Malformed JSON or empty payload. VALIDATION")
+            raise HTTPException(status_code=400, detail="Malformed JSON or empty payload.")
 
         if not new_v:
             raise HTTPException(status_code=400, detail="Malformed JSON or empty payload.")
