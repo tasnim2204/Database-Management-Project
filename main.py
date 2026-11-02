@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from handler.vehicles import VehicleHandler, VehicleCreate, VehicleUpdate
 from handler.road_segments import RoadHandler, RoadSegmentCreate, RoadSegmentUpdate
+from handler.parking_area import ParkingHandler, ParkingAreaCreate, ParkingAreaUpdate
 
 app = FastAPI()
 # origins = [
@@ -77,3 +78,24 @@ async def update_road_segment(road_id: int, new_road: RoadSegmentUpdate):
 @app.delete("/api/v1/road-segments/{road_id}", status_code=200)
 async def delete_road_segment(road_id: int):
     return RoadHandler().delete_road_segment(road_id)
+
+# --------------- PARKING-AREA ENDPOINTS ----------------
+@app.post("/api/v1/parking-areas", status_code=201)
+async def create_parking_area(new_parking_data: ParkingAreaCreate):
+    return ParkingHandler().create_parking_area(new_parking_data)
+
+@app.get("/api/v1/parking-areas", status_code=200)
+async def get_parking_areas(limit: int, offset: int, bbox: Optional[str]=None):
+    return ParkingHandler().get_parking_areas(limit, offset, bbox)
+
+@app.get("/api/v1/parking-areas/{parking_area_id}", status_code=200)
+async def get_parking_by_id(parking_area_id: int):
+    return ParkingHandler().get_parking_by_id(parking_area_id)
+
+@app.put("/api/v1/parking-areas/{parking_area_id}", status_code=200)
+async def update_parking_area(parking_area_id:int, new_parking_data: ParkingAreaUpdate):
+    return ParkingHandler().update_parking_area(parking_area_id, new_parking_data)
+
+@app.delete("/api/v1/parking-areas/{parking_area_id}")
+async def delete_parking_area(parking_area_id: int):
+    return ParkingHandler().delete_parking_area(parking_area_id)

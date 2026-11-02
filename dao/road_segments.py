@@ -59,10 +59,10 @@ class RoadSegmentDAO:
             if bbox is not None:
                 where_conditions.append("ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))")
                 params.update({
-                     "min_lon": bbox["min_lon"],
-                     "min_lat": bbox["min_lat"],
-                     "max_lon": bbox["max_lon"],
-                     "max_lat": bbox["max_lat"]
+                    "min_lon": bbox["min_lon"],
+                    "min_lat": bbox["min_lat"],
+                    "max_lon": bbox["max_lon"],
+                    "max_lat": bbox["max_lat"]
                 })
             
             full_sql = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""

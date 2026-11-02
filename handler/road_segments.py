@@ -42,9 +42,9 @@ class RoadSegmentCreate(BaseModel):
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
 
         coords = value.get("coordinates")
-        if not isinstance(coords, list) or len(coords) < 2: #type: ignore
+        if not isinstance(coords, list) or len(coords) < 2:
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
-        for point in coords: #type: ignore
+        for point in coords:
             if not isinstance(point, list) or len(point) != 2:
                 raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
             lon, lat = point
@@ -62,6 +62,13 @@ class RoadSegmentUpdate(BaseModel):
     direction: Optional[str] | None = None
     geom: Optional[dict[str, Any]] | None = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value:str) -> str:
+        if not value or not value.strip():
+            raise HTTPException(status_code=400, detail="name must be non-empty.")
+        return value.strip()
+    
     @field_validator("speed_limit_kph")
     @classmethod
     def validate_speed_limit(cls, value: Optional[int]) -> Optional[int]:
@@ -134,10 +141,7 @@ class RoadHandler:
             result = dao.create_road_segment(new_road.model_dump(exclude_none=False))
             return result
         except Exception as e:
-            # raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=400, detail=f"error: {e}")
+            raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
 
     def get_road_segments(self, limit: int, offset: int, name: Optional[str]=None, min_speed_kph: Optional[int]=None, max_speed_kph: Optional[int]=None, bbox: Optional[str]=None):
         dao = RoadSegmentDAO()
@@ -181,7 +185,7 @@ class RoadHandler:
         try:
             result = dao.get_road_segments(limit, offset, name, min_speed_kph, max_speed_kph, bbox_params)
             return result if not None else None
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid field values.")
 
     def get_road_by_id(self, road_id: int, bbox: Optional[str]=None):
@@ -218,13 +222,10 @@ class RoadHandler:
         try:
             result = dao.get_road_by_id(road_id, bbox_params)
             if result is None:
-                raise HTTPException(status_code=404, detail="road_id does not exist.NONE")
+                raise HTTPException(status_code=404, detail="road_id does not exist.")
             return result
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            # raise HTTPException(status_code=404, detail="road_id does not exist.")
-            raise HTTPException(status_code=400, detail=f"Database Error: {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=404, detail="road_id does not exist.")
 
     def update_road_segment(self, road_id: int, new_road_data: dict[str, Any] | RoadSegmentUpdate):
         dao = RoadSegmentDAO()
