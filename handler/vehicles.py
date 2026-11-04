@@ -2,7 +2,6 @@ from pydantic import BaseModel, ValidationError
 from typing import Optional, Any
 from dao.vehicles import VehicleDAO
 from fastapi import HTTPException
-from psycopg2 import errors
 
 class VehicleCreate(BaseModel):
     vehicle_type_id: int

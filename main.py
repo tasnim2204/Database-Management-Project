@@ -1,9 +1,11 @@
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from handler.vehicles import VehicleHandler, VehicleCreate, VehicleUpdate
 from handler.road_segments import RoadHandler, RoadSegmentCreate, RoadSegmentUpdate
 from handler.parking_area import ParkingHandler, ParkingAreaCreate, ParkingAreaUpdate
+from handler.location_ping import LocationHandler, LocationPingCreate, LocationPingUpdate
 
 app = FastAPI()
 # origins = [
@@ -99,3 +101,28 @@ async def update_parking_area(parking_area_id:int, new_parking_data: ParkingArea
 @app.delete("/api/v1/parking-areas/{parking_area_id}")
 async def delete_parking_area(parking_area_id: int):
     return ParkingHandler().delete_parking_area(parking_area_id)
+
+# --------------- LOCATION-PING ENDPOINTS ----------------
+@app.post("/api/v1/location-pings", status_code=201)
+async def create_location_ping(new_location_ping: LocationPingCreate):
+    return LocationHandler().create_location_ping(new_location_ping)
+
+@app.get("/api/v1/location-pings")
+async def get_all_location_pings(limit: int, offset: int, vehicle_id: Optional[int] = None, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None, bbox: Optional[str] = None):
+    return LocationHandler().get_all_pings(limit, offset, vehicle_id, from_ts, to_ts, bbox)
+
+@app.get("/api/v1/location-pings/{ping_id}")
+async def get_ping_by_id(ping_id: int):
+    return LocationHandler().get_ping_by_id(ping_id)
+
+@app.put("/api/v1/location-pings/{ping_id}")
+async def update_location_ping(ping_id: int, new_location_ping: LocationPingUpdate):
+    return LocationHandler().update_location_ping(ping_id, new_location_ping)
+
+@app.delete("/api/v1/location-pings/{ping_id}")
+async def delete_location_ping(ping_id: int):
+    return LocationHandler().delete_location_ping(ping_id)
+
+@app.get("/api/v1/vehicles/{vehicle_id}/pings")
+async def get_pings_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None):
+    return LocationHandler().get_pings_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)

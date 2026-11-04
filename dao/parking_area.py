@@ -1,7 +1,4 @@
-from pydantic import BaseModel
 from typing import Any, Optional
-from datetime import datetime
-from fastapi import HTTPException
 
 from psycopg2.pool import SimpleConnectionPool
 from config.dbconfig import POOL_CONFIG, PG_DB_CONFIG

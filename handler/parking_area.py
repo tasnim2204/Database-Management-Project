@@ -1,8 +1,7 @@
 from pydantic import BaseModel, ValidationError, field_validator
 from typing import Optional, Any
 from dao.parking_area import ParkingAreaDAO
-from fastapi import HTTPException, Response
-from psycopg2 import errors
+from fastapi import HTTPException
 
 class ParkingAreaCreate(BaseModel):
     name: str

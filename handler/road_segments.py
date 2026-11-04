@@ -2,7 +2,6 @@ from pydantic import BaseModel, ValidationError, field_validator
 from typing import Optional, Any
 from dao.road_segments import RoadSegmentDAO
 from fastapi import HTTPException, Response
-from psycopg2 import errors
 
 class RoadSegmentCreate(BaseModel):
     name: str
