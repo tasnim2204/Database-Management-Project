@@ -285,7 +285,7 @@ class VehicleDAO:
             query = """
             SELECT 1
             FROM trip
-            FROM vehicle_id = %s
+            WHERE vehicle_id = %s
             LIMIT 1"""
             cur.execute(query, (vehicle_id,))
 

@@ -7,6 +7,7 @@ from handler.road_segments import RoadHandler, RoadSegmentCreate, RoadSegmentUpd
 from handler.parking_area import ParkingHandler, ParkingAreaCreate, ParkingAreaUpdate
 from handler.location_ping import LocationHandler, LocationPingCreate, LocationPingUpdate
 from handler.trip import TripHandler, TripCreate, TripUpdate
+from handler.driver import DriverHandler, DriverCreate, DriverUpdate
 
 app = FastAPI()
 # origins = [
@@ -152,3 +153,24 @@ async def delete_trip(trip_id: int):
 @app.get("/api/v1/vehicles/{vehicle_id}/trips")
 async def get_trips_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None):
     return TripHandler().get_trips_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
+
+# --------------- DRIVER ENDPOINTS ----------------
+@app.post("/api/v1/drivers")
+async def create_driver(new_driver_data: DriverCreate):
+    return DriverHandler().create_driver(new_driver_data)
+
+@app.get("/api/v1/drivers")
+async def get_all_drivers(limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None):
+    return DriverHandler().get_all_drivers(limit, offset, name, license_number)
+
+@app.get("/api/v1/drivers/{driver_id}")
+async def get_driver_by_id(driver_id: int):
+    return DriverHandler().get_driver_by_id(driver_id)
+
+@app.put("/api/v1/drivers/{driver_id}")
+async def update_driver(driver_id: int, new_driver_data: DriverUpdate):
+    return DriverHandler().update_driver(driver_id, new_driver_data)
+
+@app.delete("/api/v1/drivers/{driver_id}")
+async def delete_driver(driver_id: int):
+    return DriverHandler().delete_driver(driver_id)
