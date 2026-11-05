@@ -8,6 +8,7 @@ from handler.parking_area import ParkingHandler, ParkingAreaCreate, ParkingAreaU
 from handler.location_ping import LocationHandler, LocationPingCreate, LocationPingUpdate
 from handler.trip import TripHandler, TripCreate, TripUpdate
 from handler.driver import DriverHandler, DriverCreate, DriverUpdate
+from handler.vehicle_assignment import VehicleAssignmentHandler, VehicleAssignmentCreate, VehicleAssignmentUpdate
 
 app = FastAPI()
 # origins = [
@@ -174,3 +175,24 @@ async def update_driver(driver_id: int, new_driver_data: DriverUpdate):
 @app.delete("/api/v1/drivers/{driver_id}")
 async def delete_driver(driver_id: int):
     return DriverHandler().delete_driver(driver_id)
+
+# --------------- VEHICLE ASSIGNMENT ENDPOINTS ----------------
+@app.post("/api/v1/vehicle-assignments")
+async def create_vehicle_assignment(new_assignment_data: VehicleAssignmentCreate):
+    return VehicleAssignmentHandler().create_vehicle_assignment(new_assignment_data)
+
+@app.get("/api/v1/vehicle-assignments")
+async def get_vehicle_assignments(limit: int, offset: int, vehicle_id: Optional[int]=None, driver_id: Optional[int]=None, active: Optional[bool]=None):
+    return VehicleAssignmentHandler().get_vehicle_assignments(limit, offset, vehicle_id, driver_id, active)
+
+@app.get("/api/v1/vehicle-assignments/{assignment_id}")
+async def get_assignment_by_id(assignment_id: int):
+    return VehicleAssignmentHandler().get_assignment_by_id(assignment_id)
+
+@app.put("/api/v1/vehicle-assignments/{assignment_id}")
+async def update_vehicle_assignment(assignment_id: int, new_assignment_data: VehicleAssignmentUpdate):
+    return VehicleAssignmentHandler().update_vehicle_assignment(assignment_id, new_assignment_data)
+
+@app.delete("/api/v1/vehicle-assignments/{assignment_id}")
+async def delete_vehicle_assignment(assignment_id: int):
+    return VehicleAssignmentHandler().delete_vehicle_assignment(assignment_id)
