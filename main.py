@@ -6,6 +6,7 @@ from handler.vehicles import VehicleHandler, VehicleCreate, VehicleUpdate
 from handler.road_segments import RoadHandler, RoadSegmentCreate, RoadSegmentUpdate
 from handler.parking_area import ParkingHandler, ParkingAreaCreate, ParkingAreaUpdate
 from handler.location_ping import LocationHandler, LocationPingCreate, LocationPingUpdate
+from handler.trip import TripHandler, TripCreate, TripUpdate
 
 app = FastAPI()
 # origins = [
@@ -126,3 +127,28 @@ async def delete_location_ping(ping_id: int):
 @app.get("/api/v1/vehicles/{vehicle_id}/pings")
 async def get_pings_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None):
     return LocationHandler().get_pings_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
+
+# --------------- TRIP ENDPOINTS ----------------
+@app.post("/api/v1/trips")
+async def create_trip(new_trip_data: TripCreate):
+    return TripHandler().create_trip(new_trip_data)
+
+@app.get("/api/v1/trips")
+async def get_all_trips(limit: int, offset: int, from_ts: datetime, to_ts: datetime, vehicle_id: Optional[int]=None, ):
+    return TripHandler().get_all_trips(limit, offset, from_ts, to_ts, vehicle_id)
+
+@app.get("/api/v1/trips/{trip_id}")
+async def get_trip_by_id(trip_id:int):
+    return TripHandler().get_trip_by_id(trip_id)
+
+@app.put("/api/v1/trips/{trip_id}")
+async def update_trip(trip_id: int, new_trip_data: TripUpdate):
+    return TripHandler().update_trip(trip_id, new_trip_data)
+
+@app.delete("/api/v1/trips/{trip_id}")
+async def delete_trip(trip_id: int):
+    return TripHandler().delete_trip(trip_id)
+
+@app.get("/api/v1/vehicles/{vehicle_id}/trips")
+async def get_trips_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None):
+    return TripHandler().get_trips_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)

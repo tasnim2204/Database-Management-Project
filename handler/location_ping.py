@@ -2,8 +2,7 @@ from pydantic import BaseModel, ValidationError, field_validator
 from typing import Optional, Any
 from dao.location_ping import LocationPingDAO
 from datetime import datetime
-from fastapi import HTTPException, Response
-from psycopg2 import errors
+from fastapi import HTTPException
 
 class LocationPingCreate(BaseModel):
     vehicle_id: int
