@@ -37,7 +37,7 @@ class RoadSegmentDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_road_segments(self, limit:int, offset: int, name: Optional[str]=None, min_speed_kph: Optional[int]=None, max_speed_kph: Optional[int]=None, bbox: Optional[dict]=None) -> dict:
+    def get_road_segments(self, limit:int, offset: int, name: Optional[str]=None, min_speed_kph: Optional[int]=None, max_speed_kph: Optional[int]=None, bbox: Optional[str]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -56,12 +56,14 @@ class RoadSegmentDAO:
                 params["max_speed_kph"] = max_speed_kph
             
             if bbox is not None:
+                min_lon, min_lat, max_lon, max_lat = [float(val.strip()) for val in bbox.split(",")]
+
                 where_conditions.append("ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))")
                 params.update({
-                    "min_lon": bbox["min_lon"],
-                    "min_lat": bbox["min_lat"],
-                    "max_lon": bbox["max_lon"],
-                    "max_lat": bbox["max_lat"]
+                    "min_lon": min_lon,
+                    "min_lat": min_lat,
+                    "max_lon": max_lon,
+                    "max_lat": max_lat
                 })
             
             full_sql = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
@@ -89,7 +91,7 @@ class RoadSegmentDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_road_by_id(self, road_id: int, bbox: Optional[dict[str, float]]=None) -> dict:
+    def get_road_by_id(self, road_id: int, bbox: Optional[str]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -98,11 +100,12 @@ class RoadSegmentDAO:
             bbox_filter_sql = ""
 
             if bbox is not None:
+                min_lon, min_lat, max_lon, max_lat = [float(val.strip()) for val in bbox.split(",")]
                 params.update({
-                "min_lon": bbox["min_lon"],
-                "min_lat": bbox["min_lat"],
-                "max_lon": bbox["max_lon"],
-                "max_lat": bbox["max_lat"]
+                "min_lon": min_lon,
+                "min_lat": min_lat,
+                "max_lon": max_lon,
+                "max_lat": max_lat
                 })
                 bbox_filter_sql = """AND ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))"""
 

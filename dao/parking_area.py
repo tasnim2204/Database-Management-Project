@@ -20,9 +20,9 @@ class ParkingAreaDAO:
             cur = conn.cursor(cursor_factory=DictCursor)
 
             query = """
-            insert into parking_area(name, capacity, geom, created_at)
-            values (%(name)s, %(capacity)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326), DATE_TRUNC('second', NOW()))
-            returning parking_area_id, name, capacity, ST_AsGeoJSON(geom)::json AS geom, created_at"""
+            INSERT INTO parking_area(name, capacity, geom, created_at)
+            VALUES (%(name)s, %(capacity)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326), DATE_TRUNC('second', NOW()))
+            RETURNING parking_area_id, name, capacity, ST_AsGeoJSON(geom)::json AS geom, created_at"""
 
             params = dict(new_parking_data)
             params["geom"] = json.dumps(params["geom"])
@@ -31,11 +31,14 @@ class ParkingAreaDAO:
             result = dict(cur.fetchone()) #type: ignore
             conn.commit()
             return result
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_parking_areas(self, limit:int, offset: int, bbox: Optional[str]=None) -> dict:
+    def get_parking_areas(self, limit:int, offset: int, name:Optional[str]=None, bbox: Optional[str]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -72,7 +75,9 @@ class ParkingAreaDAO:
         
             cur.execute(query, params)
             results = [dict(row) for row in cur.fetchall()]
-                                
+
+            if results is None:
+                return None #type: ignore
             return {"items": results, "limit": limit, "offset": offset, "count": result}
         finally:
             cur.close()
@@ -85,10 +90,10 @@ class ParkingAreaDAO:
             params: dict[str, Any] = {"parking_area_id": parking_area_id}
 
             query = """
-            select parking_area_id, name, capacity, 
+            SELECT parking_area_id, name, capacity, 
                         ST_AsGeoJSON(geom)::json AS geom, created_at
-                        from parking_area
-                        where parking_area_id = %(parking_area_id)s"""
+                        FROM parking_area
+                        WHERE parking_area_id = %(parking_area_id)s"""
                         
             cur.execute(query, params)
             result = cur.fetchone()
@@ -101,21 +106,31 @@ class ParkingAreaDAO:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
-            set_sql = ", ".join([f"{field} = %({field})s" for field in new_parking_data.keys()])
+            fields = []
             params = dict(new_parking_data)
+            for field in new_parking_data.keys():
+                if field == "geom":
+                    fields.append("geom = ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326)")
+                    params["geom"] = json.dumps(new_parking_data["geom"])
+                else:
+                    fields.append(f"{field} = %({field})s")
+            set_sql = ", ".join(fields)
             params["parking_area_id"] = parking_area_id
         
             query = f"""
-            update parking_area
-            set {set_sql}
-            where parking_area_id = %(parking_area_id)s
-            returning parking_area_id, name, capacity, ST_AsGeoJSON(geom)::json AS geom, created_at"""
+            UPDATE parking_area
+            SET {set_sql}
+            WHERE parking_area_id = %(parking_area_id)s
+            RETURNING parking_area_id, name, capacity, ST_AsGeoJSON(geom)::json AS geom, created_at"""
         
             cur.execute(query, params)
             result = cur.fetchone()
 
             conn.commit()
             return dict(result) if result is not None else None #type: ignore
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -135,6 +150,27 @@ class ParkingAreaDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    # ---------- HELPER FUNCTIONS -----------
+    def parking_area_exists(self, parking_area_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+
+            query = """
+            SELECT 1
+            FROM parking_area
+            WHERE parking_area_id = %s"""
+
+            cur.execute(query, (parking_area_id,))
+            result = cur.fetchone()
+            return result is not None
         finally:
             cur.close()
             self.pool.putconn(conn)

@@ -133,33 +133,7 @@ class RoadHandler:
         if min_speed_kph is not None and max_speed_kph is not None and min_speed_kph > max_speed_kph:
             raise HTTPException(status_code=400, detail="Invalid field values.")
 
-        bbox_params: Optional[dict[str, float]] = None
-        if bbox and bbox.strip(): 
-            try:
-                params = [float(p.strip()) for p in bbox.split(",")] #split string into values
-                if len(params) != 4:
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                min_lon, min_lat, max_lon, max_lat = params
-
-                if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-                if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                if min_lon >= max_lon or min_lat >= max_lat:
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                bbox_params = {
-                    "min_lon": min_lon,
-                    "min_lat": min_lat,
-                    "max_lon": max_lon,
-                    "max_lat": max_lat
-                }
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid field values.")
-        
-        result = dao.get_road_segments(limit, offset, name, min_speed_kph, max_speed_kph, bbox_params)
+        result = dao.get_road_segments(limit, offset, name, min_speed_kph, max_speed_kph, bbox)
         return result
 
     def get_road_by_id(self, road_id: int, bbox: Optional[str]=None):
@@ -168,33 +142,7 @@ class RoadHandler:
         if road_id <= 0:
             raise HTTPException(status_code=400, detail="road_id must be a positive integer.")
 
-        bbox_params: Optional[dict[str, float]] = None
-        if bbox and bbox.strip(): 
-            try:
-                params = [float(p.strip()) for p in bbox.split(",")] #split string into values
-                if len(params) != 4:
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                min_lon, min_lat, max_lon, max_lat = params
-
-                if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-                if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                if min_lon >= max_lon or min_lat >= max_lat:
-                    raise HTTPException(status_code=400, detail="Invalid field values.")
-
-                bbox_params = {
-                    "min_lon": min_lon,
-                    "min_lat": min_lat,
-                    "max_lon": max_lon,
-                    "max_lat": max_lat
-                }
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid field values.")
-        
-        result = dao.get_road_by_id(road_id, bbox_params)
+        result = dao.get_road_by_id(road_id, bbox)
         if result is None:
             raise HTTPException(status_code=404, detail="road_id does not exist.")
         return result

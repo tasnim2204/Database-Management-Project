@@ -65,7 +65,7 @@ async def create_road_segment(new_road_data: RoadSegmentCreate):
     return RoadHandler().create_road_segment(new_road_data)
 
 @app.get("/api/v1/road-segments/geojson", status_code=200)
-async def get_road_geojson(limit:int, offset: int, name: str, min_speed_kph: int, max_speed_kph: int):
+async def get_road_geojson(limit:int, offset: int, name: Optional[str]=None, min_speed_kph: Optional[int]=None, max_speed_kph: Optional[int]=None):
     return RoadHandler().get_road_geojson(limit, offset, name, min_speed_kph, max_speed_kph)
 
 @app.get("/api/v1/road-segments")
@@ -90,8 +90,8 @@ async def create_parking_area(new_parking_data: ParkingAreaCreate):
     return ParkingHandler().create_parking_area(new_parking_data)
 
 @app.get("/api/v1/parking-areas", status_code=200)
-async def get_parking_areas(limit: int, offset: int, bbox: Optional[str]=None):
-    return ParkingHandler().get_parking_areas(limit, offset, bbox)
+async def get_parking_areas(limit: int, offset: int, name: Optional[str]=None, bbox: Optional[str]=None):
+    return ParkingHandler().get_parking_areas(limit, offset, name, bbox)
 
 @app.get("/api/v1/parking-areas/{parking_area_id}", status_code=200)
 async def get_parking_by_id(parking_area_id: int):
@@ -101,7 +101,7 @@ async def get_parking_by_id(parking_area_id: int):
 async def update_parking_area(parking_area_id:int, new_parking_data: ParkingAreaUpdate):
     return ParkingHandler().update_parking_area(parking_area_id, new_parking_data)
 
-@app.delete("/api/v1/parking-areas/{parking_area_id}")
+@app.delete("/api/v1/parking-areas/{parking_area_id}", status_code=200)
 async def delete_parking_area(parking_area_id: int):
     return ParkingHandler().delete_parking_area(parking_area_id)
 
@@ -111,7 +111,7 @@ async def create_location_ping(new_location_ping: LocationPingCreate):
     return LocationHandler().create_location_ping(new_location_ping)
 
 @app.get("/api/v1/location-pings")
-async def get_all_location_pings(limit: int, offset: int, vehicle_id: Optional[int] = None, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None, bbox: Optional[str] = None):
+async def get_location_pings(limit: int, offset: int, vehicle_id: Optional[int] = None, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None, bbox: Optional[str] = None):
     return LocationHandler().get_all_pings(limit, offset, vehicle_id, from_ts, to_ts, bbox)
 
 @app.get("/api/v1/location-pings/{ping_id}")
@@ -136,7 +136,7 @@ async def create_trip(new_trip_data: TripCreate):
     return TripHandler().create_trip(new_trip_data)
 
 @app.get("/api/v1/trips")
-async def get_all_trips(limit: int, offset: int, from_ts: datetime, to_ts: datetime, vehicle_id: Optional[int]=None, ):
+async def get_trips(limit: int, offset: int, from_ts: datetime, to_ts: datetime, vehicle_id: Optional[int]=None, ):
     return TripHandler().get_all_trips(limit, offset, from_ts, to_ts, vehicle_id)
 
 @app.get("/api/v1/trips/{trip_id}")
@@ -161,7 +161,7 @@ async def create_driver(new_driver_data: DriverCreate):
     return DriverHandler().create_driver(new_driver_data)
 
 @app.get("/api/v1/drivers")
-async def get_all_drivers(limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None):
+async def get_drivers(limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None):
     return DriverHandler().get_all_drivers(limit, offset, name, license_number)
 
 @app.get("/api/v1/drivers/{driver_id}")
