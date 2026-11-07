@@ -73,8 +73,8 @@ async def get_road_segments(limit:int, offset: int, name: Optional[str]=None, mi
     return RoadHandler().get_road_segments(limit, offset, name, min_speed_kph, max_speed_kph, bbox)
 
 @app.get("/api/v1/road-segments/{road_id}", status_code=200)
-async def get_road_by_id(road_id: int):
-    return RoadHandler().get_road_by_id(road_id)
+async def get_road_by_id(road_id: int, bbox: Optional[str]=None):
+    return RoadHandler().get_road_by_id(road_id, bbox)
 
 @app.put("/api/v1/road-segments/{road_id}", status_code=200)
 async def update_road_segment(road_id: int, new_road: RoadSegmentUpdate):

@@ -19,9 +19,9 @@ class RoadSegmentDAO:
             cur = conn.cursor(cursor_factory=DictCursor)
 
             query = """
-            insert into road_segment(name, speed_limit_kph, is_oneway, direction, geom, created_at)
-            values (%(name)s, %(speed_limit_kph)s, %(is_oneway)s, %(direction)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326), DATE_TRUNC('second', NOW()))
-            returning road_id, name, speed_limit_kph, is_oneway, direction, ST_AsGeoJSON(geom)::json AS geom, created_at"""
+            INSERT INTO road_segment(name, speed_limit_kph, is_oneway, direction, geom, created_at)
+            VALUES (%(name)s, %(speed_limit_kph)s, %(is_oneway)s, %(direction)s, ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326), DATE_TRUNC('second', NOW()))
+            RETURNING road_id, name, speed_limit_kph, is_oneway, direction, ST_AsGeoJSON(geom)::json AS geom, created_at"""
 
             params = dict(new_road_data)
             params["geom"] = json.dumps(params["geom"])
@@ -30,6 +30,9 @@ class RoadSegmentDAO:
             result = dict(cur.fetchone()) #type: ignore
             conn.commit()
             return result
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -104,10 +107,10 @@ class RoadSegmentDAO:
                 bbox_filter_sql = """AND ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))"""
 
             query = f"""
-            select road_id, name, speed_limit_kph, 
+            SELECT road_id, name, speed_limit_kph, 
             ST_AsGeoJSON(geom)::json AS geom, created_at
-            from road_segment
-            where road_id = %(road_id)s
+            FROM road_segment
+            WHERE road_id = %(road_id)s
             {bbox_filter_sql}"""
             
             cur.execute(query, params)
@@ -121,21 +124,35 @@ class RoadSegmentDAO:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
-            set_sql = ", ".join([f"{field} = %({field})s" for field in new_road_data.keys()])
+
+            fields = []
             params = dict(new_road_data)
+            for field in new_road_data.keys():
+                if field == "geom":
+                    fields.append("geom = ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326)")
+                    params["geom"] = json.dumps(new_road_data["geom"])
+                else:
+                    fields.append(f"{field} = %({field})s")
+            set_sql = ", ".join(fields)
+                        
             params["road_id"] = road_id
 
             query = f"""
-            update road_segment
-            set {set_sql}
-            where road_id = %(road_id)s
-            returning road_id, name, speed_limit_kph, ST_AsGeoJSON(geom)::json AS geom, created_at"""
+            UPDATE road_segment
+            SET {set_sql}
+            WHERE road_id = %(road_id)s
+            RETURNING road_id, name, speed_limit_kph, ST_AsGeoJSON(geom)::json AS geom, created_at"""
 
             cur.execute(query, params)
             result = cur.fetchone()
 
             conn.commit()
-            return dict(result) if result is not None else None #type: ignore
+            if result is None:
+                return None #type: ignore
+            return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -155,6 +172,9 @@ class RoadSegmentDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -178,6 +198,7 @@ class RoadSegmentDAO:
                 params["max_speed_kph"] = max_speed_kph
             
             full_sql = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+            
             count_query = f"""
             SELECT COUNT(*) AS result
             FROM road_segment
@@ -187,7 +208,7 @@ class RoadSegmentDAO:
             result = cur.fetchone()['result'] #type: ignore
 
             query = f"""
-            SELECT road_id, name, speed_limit_kph, is_oneway, direction, ST_AsGeoJSON(geom)::json as geometry
+            SELECT road_id, name, speed_limit_kph, is_oneway, direction, ST_AsGeoJSON(geom)::json as geometry, created_at
             FROM road_segment
             {full_sql}
             ORDER BY road_id
@@ -209,6 +230,24 @@ class RoadSegmentDAO:
 
                         
             return {"type": "FeatureCollection", "count": result, "limit": limit, "offset": offset, "features": features}
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    # ---------- HELPER FUNCTIONS -----------
+    def road_exists(self, road_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+
+            query = """
+            SELECT 1
+            FROM road_segment
+            WHERE road_id = %s"""
+
+            cur.execute(query, (road_id,))
+            result = cur.fetchone()
+            return result is not None
         finally:
             cur.close()
             self.pool.putconn(conn)
