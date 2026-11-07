@@ -98,7 +98,7 @@ class VehicleDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def update_vehicle(self, vehicle_id: int, new_vehicle_data: dict[str, Any]) -> dict[str, Any]:
+    def update_vehicle(self, vehicle_id: int, new_vehicle_data: dict[str, Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -125,7 +125,7 @@ class VehicleDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def delete_vehicle(self, vehicle_id: int) -> dict[str, Any]:
+    def delete_vehicle(self, vehicle_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -147,7 +147,7 @@ class VehicleDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_vehicle_current_location(self, vehicle_id: int):
+    def get_vehicle_current_location(self, vehicle_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -179,7 +179,7 @@ class VehicleDAO:
             cur.execute(query, (vehicle_id,))
             result = cur.fetchone()
             if result is None or result["last_ts"] is None:
-                return None
+                return None #type: ignore
             return dict(result)
         finally:
             cur.close()

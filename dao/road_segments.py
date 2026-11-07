@@ -91,7 +91,7 @@ class RoadSegmentDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_road_by_id(self, road_id: int, bbox: Optional[str]=None) -> dict:
+    def get_road_by_id(self, road_id: int, bbox: Optional[dict]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -100,13 +100,7 @@ class RoadSegmentDAO:
             bbox_filter_sql = ""
 
             if bbox is not None:
-                min_lon, min_lat, max_lon, max_lat = [float(val.strip()) for val in bbox.split(",")]
-                params.update({
-                "min_lon": min_lon,
-                "min_lat": min_lat,
-                "max_lon": max_lon,
-                "max_lat": max_lat
-                })
+                params.update(bbox)
                 bbox_filter_sql = """AND ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))"""
 
             query = f"""

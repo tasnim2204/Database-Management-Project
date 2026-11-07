@@ -142,7 +142,27 @@ class RoadHandler:
         if road_id <= 0:
             raise HTTPException(status_code=400, detail="road_id must be a positive integer.")
 
-        result = dao.get_road_by_id(road_id, bbox)
+        bbox_params=None
+        if bbox and bbox.strip():
+            try:
+                parts = [float(p.strip()) for p in bbox.split(",")]
+                if len(parts) != 4:
+                    raise ValueError
+                min_lon, min_lat, max_lon, max_lat = parts
+            except ValueError:
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if min_lon >= max_lon or min_lat >= max_lat:
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            bbox_params = dict(min_lon=min_lon, min_lat=min_lat,
+                               max_lon=max_lon, max_lat=max_lat)
+            
+        result = dao.get_road_by_id(road_id, bbox_params)
         if result is None:
             raise HTTPException(status_code=404, detail="road_id does not exist.")
         return result

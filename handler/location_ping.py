@@ -36,7 +36,7 @@ class LocationPingCreate(BaseModel):
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
 
         coords = value.get("coordinates")
-        if not isinstance(coords, list) or len(coords) < 2:
+        if not isinstance(coords, list) or len(coords) != 2:
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
         lon, lat = coords
 
@@ -78,7 +78,7 @@ class LocationPingUpdate(BaseModel):
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
 
         coords = value.get("coordinates")
-        if not isinstance(coords, list) or len(coords) < 2:
+        if not isinstance(coords, list) or len(coords) != 2:
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
         lon, lat = coords
 
@@ -93,19 +93,19 @@ class LocationHandler:
         dao = LocationPingDAO()
         try:
             if isinstance(new_ping_data, LocationPingCreate):
-                new_location = new_ping_data
+                new_location = new_ping_data.model_dump(exclude_none=False)
             else:
-                new_location = LocationPingCreate.model_validate(new_ping_data)
+                new_location = LocationPingCreate.model_validate(new_ping_data).model_dump(exclude_none=False)
         except ValidationError:
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
         
-        if not dao.vehicle_exists(new_location.vehicle_id):
+        if not dao.vehicle_exists(new_location["vehicle_id"]):
             raise HTTPException(status_code=404, detail="vehicle_id does not exist.")
-        try:
-            result = dao.create_location_ping(new_location.model_dump(exclude_none=True))
-            return result
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"Malformed geometry or invalid JSON.")
+
+        result = dao.create_location_ping(new_location)
+        if result is None:
+            raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
+        return result
 
     def get_all_pings(self, limit: int, offset: int, vehicle_id: Optional[int]= None, from_ts: Optional[datetime] = None, to_ts: Optional[datetime]=None, bbox: Optional[str]=None):
         dao = LocationPingDAO()
@@ -113,53 +113,45 @@ class LocationHandler:
         if limit < 0 or offset < 0:
             raise HTTPException(status_code=400, detail="Invalid query parameter values.")
         if vehicle_id is not None:
-            if vehicle_id < 0  or not dao.vehicle_exists(vehicle_id):
+            if vehicle_id <= 0:
                 raise HTTPException(status_code=400, detail="Invalid query parameter values.")
         
         if from_ts is not None and to_ts is not None and from_ts > to_ts:
             raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-        
-        bbox_params: Optional[dict[str, float]] = None
-        if bbox and bbox.strip(): 
+
+        bbox_params=None
+        if bbox and bbox.strip():
             try:
-                params = [float(p.strip()) for p in bbox.split(",")] #split string into values
-                if len(params) != 4:
-                    raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-        
-                min_lon, min_lat, max_lon, max_lat = params
-                
-                if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
-                    raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-                if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
-                    raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-                if min_lon > max_lon or min_lat > max_lat:
-                    raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-        
-                bbox_params = {
-                    "min_lon": min_lon,
-                    "min_lat": min_lat,
-                    "max_lon": max_lon,
-                    "max_lat": max_lat
-                }
+                parts = [float(p.strip()) for p in bbox.split(",")]
+                if len(parts) != 4:
+                    raise ValueError
+                min_lon, min_lat, max_lon, max_lat = parts
             except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid query parameter values.")
-                
-        try:
-            result = dao.get_all_pings(limit, offset, vehicle_id, from_ts, to_ts, bbox_params)
-            if result is None:
-                return None
-            return result
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid query parameter values.")
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if min_lon >= max_lon or min_lat >= max_lat:
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            bbox_params = dict(min_lon=min_lon, min_lat=min_lat,
+                               max_lon=max_lon, max_lat=max_lat)
+
+        result = dao.get_all_pings(limit, offset, vehicle_id, from_ts, to_ts, bbox_params)
+        return result
 
     def get_ping_by_id(self, ping_id: int):
         dao = LocationPingDAO()
-        if ping_id < 0:
+        if ping_id <= 0:
+            raise HTTPException(status_code=400, detail="ping_id must be a positive integer.")
+        if not dao.location_exists(ping_id):
             raise HTTPException(status_code=404, detail="ping_id does not exist.")
 
         result = dao.get_ping_by_id(ping_id)
         if result is None:
-            return None
+            raise HTTPException(status_code=404, detail="ping_id does not exist.")
         return result
 
     def update_location_ping(self, ping_id: int, new_ping_data: dict | LocationPingUpdate):
@@ -168,33 +160,32 @@ class LocationHandler:
             if isinstance(new_ping_data, LocationPingUpdate):
                 new_location = new_ping_data.model_dump(exclude_unset=True)
             else:
-                new_location = LocationPingUpdate.model_validate(new_ping_data)
-                new_location = new_ping_data
+                new_location = LocationPingUpdate.model_validate(new_ping_data).model_dump(exclude_unset=True)
         except ValidationError:
             raise HTTPException(status_code=400, detail="Malformed JSON or empty patch payload.")
                 
         if not new_location:
             raise HTTPException(status_code=400, detail="Malformed JSON or empty patch payload.")
-        if ping_id < 0:
+
+        if ping_id <= 0:
+            raise HTTPException(status_code=400, detail="ping_id must be a positive integer.")
+        if not dao.location_exists(ping_id):
             raise HTTPException(status_code=404, detail="ping_id does not exist.")
 
-        try:
-            result = dao.update_location_ping(ping_id, new_location)
-            if result is None:
-                return None
-            return result
-        except Exception:
+        result = dao.update_location_ping(ping_id, new_location)
+        if result is None:
             raise HTTPException(status_code=400, detail="Malformed geometry or invalid JSON.")
+        return result
 
     def delete_location_ping(self, ping_id: int):
         dao = LocationPingDAO()
-        if ping_id < 0:
+        if not dao.location_exists(ping_id):
             raise HTTPException(status_code=404, detail="ping_id does not exist.")
         
         result = dao.delete_location_ping(ping_id)
         if result is None:
             raise HTTPException(status_code=404, detail="ping_id does not exist.")
-        
+
         return {"message": "Location ping deleted successfully.", 
                         "ping_id": ping_id}
 
@@ -203,18 +194,14 @@ class LocationHandler:
         
         if limit < 0 or offset < 0:
             raise HTTPException(status_code=400, detail="Invalid or inconsistent filter values.")
-        
-        if vehicle_id is not None:
-            if vehicle_id < 0 or not dao.vehicle_exists(vehicle_id):
-                    raise HTTPException(status_code=404, detail="vehicle_id does not exist.")
+
+        if not dao.vehicle_exists(vehicle_id):
+            raise HTTPException(status_code=404, detail="vehicle_id does not exist.")
         
         if from_ts is not None and to_ts is not None and from_ts > to_ts:
                 raise HTTPException(status_code=400, detail="Invalid query parameters.")
-        
-        try:
-            result = dao.get_pings_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
-            if result is None:
-                return None
-            return result
-        except Exception:
+
+        result = dao.get_pings_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
+        if result is None:
             raise HTTPException(status_code=400, detail="Invalid query parameters.")
+        return result

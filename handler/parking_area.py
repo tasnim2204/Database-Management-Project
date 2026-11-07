@@ -117,7 +117,28 @@ class ParkingHandler:
         if name is not None:
             name = name.strip()
 
-        result = dao.get_parking_areas(limit, offset, bbox)
+        bbox_params=None
+        if bbox and bbox.strip():
+            try:
+                parts = [float(p.strip()) for p in bbox.split(",")]
+                if len(parts) != 4:
+                    raise ValueError
+                min_lon, min_lat, max_lon, max_lat = parts
+            except ValueError:
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+                raise HTTPException(400, "Invalid query parameter values.")
+            if min_lon >= max_lon or min_lat >= max_lat:
+                raise HTTPException(400, "Invalid query parameter values.")
+
+            bbox_params = dict(min_lon=min_lon, min_lat=min_lat,
+                               max_lon=max_lon, max_lat=max_lat)
+                    
+
+        result = dao.get_parking_areas(limit, offset, name, bbox_params)
         if result is None:
             raise HTTPException(status_code=400, detail="Invalid query parameter values.")
         return result

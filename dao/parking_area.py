@@ -38,7 +38,7 @@ class ParkingAreaDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_parking_areas(self, limit:int, offset: int, name:Optional[str]=None, bbox: Optional[str]=None) -> dict:
+    def get_parking_areas(self, limit:int, offset: int, name:Optional[str]=None, bbox: Optional[dict]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -46,15 +46,8 @@ class ParkingAreaDAO:
             params: dict[str, Any] = {"limit": limit, "offset": offset}
 
             if bbox is not None:
-                min_lon, min_lat, max_lon, max_lat = [float(val.strip()) for val in bbox.split(",")]
-
                 where_conditions.append("ST_Intersects(geom, ST_MakeEnvelope(%(min_lon)s, %(min_lat)s, %(max_lon)s, %(max_lat)s, 4326))")
-                params.update({
-                    "min_lon": min_lon,
-                    "min_lat": min_lat,
-                    "max_lon": max_lon,
-                    "max_lat": max_lat
-                })
+                params.update(bbox)
 
             full_sql = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
                     
@@ -83,7 +76,7 @@ class ParkingAreaDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_parking_by_id(self, parking_area_id: int):
+    def get_parking_by_id(self, parking_area_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -97,7 +90,9 @@ class ParkingAreaDAO:
                         
             cur.execute(query, params)
             result = cur.fetchone()
-            return dict(result) if result is not None else None
+            if result is None:
+                return None #type: ignore
+            return dict(result)
         finally:
             cur.close()
             self.pool.putconn(conn)
