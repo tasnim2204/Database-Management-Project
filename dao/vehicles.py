@@ -12,7 +12,7 @@ class VehicleDAO:
                                          POOL_CONFIG["maxconn"],
                                          **PG_DB_CONFIG)
 
-    def create_vehicle(self, new_vehicle_data: dict[str, Any]) -> dict[str, Any]:
+    def create_vehicle(self, new_vehicle_data: dict[str, Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -34,10 +34,10 @@ class VehicleDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_all_vehicles(self, limit: int, offset: int, status: Optional[str] = None, plate_number: Optional[str] = None) -> dict[str, Any]:
+    def get_all_vehicles(self, limit: int, offset: int, status: Optional[str] = None, plate_number: Optional[str] = None) -> dict:
         conn = self.pool.getconn()
-        cur = conn.cursor(cursor_factory= DictCursor)
         try:
+            cur = conn.cursor(cursor_factory= DictCursor)
             where_conditions = []
             params: dict[str, Any] = {"limit": limit, "offset": offset}
             
@@ -46,21 +46,13 @@ class VehicleDAO:
                 params["plate_number"] = f"%{plate_number.strip()}%"
             
             if status is not None and str(status).strip() != "":
-                status_raw = str(status).strip() #en caso que status is status name
+                status_raw = str(status).strip()
                 if status_raw.isdigit():
-                    if status_raw == "1":
-                        where_conditions.append("vehicle_status_id = %(status_id)s")
-                        params["status_id"] = int(status_raw)
-                    elif status_raw == "2":
-                        where_conditions.append("vehicle_status_id = %(status_id)s")
-                        params["status_id"] = int(status_raw)
+                    params["status_id"] = int(status_raw)
+                    where_conditions.append("vehicle_status_id = %(vehicle_status_id)s")
                 else:
-                    if status_raw == "active":
-                        where_conditions.append("vehicle_status_id = 1")
-                        params["status_name"] = status_raw
-                    elif status_raw == "inactive":
-                        where_conditions.append("vehicle_status_id = 2")
-                        params["status_name"] = status_raw
+                    params["status_name"] = status_raw.lower()
+                    where_conditions.append("vehicle_status_id = (SELECT vehicle_status_id FROM vehicle_status  WHERE LOWER(name) = %(status_name)s)")
 
             full_sql = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
 
@@ -81,13 +73,13 @@ class VehicleDAO:
 
             cur.execute(query, params)
             results = [dict(row) for row in cur.fetchall()]
-            
+
             return {"items": results, "limit": limit, "offset": offset, "count": result}
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_vehicle_by_id(self, vehicle_id:int) -> dict[str, Any]:
+    def get_vehicle_by_id(self, vehicle_id:int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -98,8 +90,10 @@ class VehicleDAO:
             WHERE vehicle_id = %s"""
 
             cur.execute(query, (vehicle_id,))
-            result = cur.fetchone() # type: ignore
-            return dict(result) if result is not None else None #type: ignore
+            result = cur.fetchone()
+            if result is None:
+                return None #type: ignore
+            return dict(result)
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -124,6 +118,9 @@ class VehicleDAO:
             
             conn.commit()
             return dict(row) if row is not None else None # type: ignore
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -143,6 +140,9 @@ class VehicleDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -289,6 +289,22 @@ class VehicleDAO:
             LIMIT 1"""
             cur.execute(query, (vehicle_id,))
 
+            result = cur.fetchone()
+            return result is not None
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    def has_assignments(self, vehicle_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+            query = """
+            SELECT 1
+            FROM vehicle_assignment
+            WHERE vehicle_id = %s
+            LIMIT 1"""
+            cur.execute(query, (vehicle_id,))   
             result = cur.fetchone()
             return result is not None
         finally:
