@@ -43,7 +43,7 @@ Database-Management-Project/\
 `│   │   ├── (.parquet files)`\
 `│   ├── extract.py`\
 `│   ├── transform.py`\
-`│   └── load.py`
+`│   └── load.py`\
 `├── backend/`\
 `│   ├── config/`\
 `│   │   ├── __init__.py`\
