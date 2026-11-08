@@ -177,22 +177,22 @@ async def delete_driver(driver_id: int):
     return DriverHandler().delete_driver(driver_id)
 
 # --------------- VEHICLE ASSIGNMENT ENDPOINTS ----------------
-@app.post("/api/v1/vehicle-assignments")
+@app.post("/api/v1/vehicle-assignments", status_code=201)
 async def create_vehicle_assignment(new_assignment_data: VehicleAssignmentCreate):
     return VehicleAssignmentHandler().create_vehicle_assignment(new_assignment_data)
 
-@app.get("/api/v1/vehicle-assignments")
+@app.get("/api/v1/vehicle-assignments", status_code=200)
 async def get_vehicle_assignments(limit: int, offset: int, vehicle_id: Optional[int]=None, driver_id: Optional[int]=None, active: Optional[bool]=None):
     return VehicleAssignmentHandler().get_vehicle_assignments(limit, offset, vehicle_id, driver_id, active)
 
-@app.get("/api/v1/vehicle-assignments/{assignment_id}")
+@app.get("/api/v1/vehicle-assignments/{assignment_id}", status_code=200)
 async def get_assignment_by_id(assignment_id: int):
     return VehicleAssignmentHandler().get_assignment_by_id(assignment_id)
 
-@app.put("/api/v1/vehicle-assignments/{assignment_id}")
+@app.put("/api/v1/vehicle-assignments/{assignment_id}", status_code=200)
 async def update_vehicle_assignment(assignment_id: int, new_assignment_data: VehicleAssignmentUpdate):
     return VehicleAssignmentHandler().update_vehicle_assignment(assignment_id, new_assignment_data)
 
-@app.delete("/api/v1/vehicle-assignments/{assignment_id}")
+@app.delete("/api/v1/vehicle-assignments/{assignment_id}", status_code=200)
 async def delete_vehicle_assignment(assignment_id: int):
     return VehicleAssignmentHandler().delete_vehicle_assignment(assignment_id)

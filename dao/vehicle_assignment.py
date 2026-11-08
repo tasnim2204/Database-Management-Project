@@ -14,36 +14,41 @@ class VehicleAssignmentDAO:
                                          POOL_CONFIG["maxconn"],
                                          **PG_DB_CONFIG)
 
-    def create_vehicle_assignment(self, new_assginment_data: dict[str, Any]):
+    def create_vehicle_assignment(self, new_assginment_data: dict[str, Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)    
             query = """
-            insert into vehicle_assignment(vehicle_id, driver_id, assigned_from, assigned_to)
-            values (%(vehicle_id)s, %(driver_id)s,%(assigned_from)s, %(assigned_to)s)
-            returning assignment_id, vehicle_id, driver_id, assigned_from, assigned_to""" 
+            INSERT INTO vehicle_assignment(vehicle_id, driver_id, assigned_from, assigned_to)
+            VALUES (%(vehicle_id)s, %(driver_id)s,%(assigned_from)s, %(assigned_to)s)
+            RETURNING assignment_id, vehicle_id, driver_id, assigned_from, assigned_to""" 
             
             params = dict(new_assginment_data)            
             cur.execute(query, params)
             result = dict(cur.fetchone()) #type: ignore
             conn.commit()
             return result
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_vehicle_assignments(self, limit:int, offset: int, vehicle_id: Optional[int]=None, driver_id: Optional[int]=None, active: Optional[bool]=None):
+    def get_vehicle_assignments(self, limit:int, offset: int, vehicle_id: Optional[int]=None, driver_id: Optional[int]=None, active: Optional[bool]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
             where_conditions = []
-            params: dict[str, Any] = {"limit": limit, "offset": offset} 
+            params: dict[str, Any] = {"limit": limit, "offset": offset}
+
             if vehicle_id is not None:
                 where_conditions.append("vehicle_id = %(vehicle_id)s")
                 params["vehicle_id"] = vehicle_id
             if driver_id is not None:
                 where_conditions.append("driver_id = %(driver_id)s")
                 params["driver_id"] = driver_id
+
             if active is not None:
                 if active == True:
                     where_conditions.append("assigned_to IS NULL")
@@ -69,13 +74,15 @@ class VehicleAssignmentDAO:
         
             cur.execute(query, params)
             results = [dict(row) for row in cur.fetchall()]
-                                    
+            if result is None:
+                return None #type: ignore
+
             return {"items": results, "limit": limit, "offset": offset, "count": result}
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_assignment_by_id(self, assignment_id:int):
+    def get_assignment_by_id(self, assignment_id:int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -88,7 +95,7 @@ class VehicleAssignmentDAO:
             cur.execute(query, (assignment_id,))
             result = cur.fetchone()
             if result is None:
-                return None
+                return None #type: ignore
             return dict(result)
         finally:
             cur.close()
@@ -113,6 +120,9 @@ class VehicleAssignmentDAO:
 
             conn.commit()
             return dict(result) if result is not None else None #type: ignore
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -131,6 +141,9 @@ class VehicleAssignmentDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
@@ -164,6 +177,23 @@ class VehicleAssignmentDAO:
             WHERE driver_id = %s"""
 
             cur.execute(query, (driver_id,))
+            result = cur.fetchone()
+            return result is not None
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    def assignment_exists(self, assignment_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+
+            query = """
+            SELECT 1
+            FROM vehicle_assignment
+            WHERE assignment_id = %s"""
+
+            cur.execute(query, (assignment_id,))
             result = cur.fetchone()
             return result is not None
         finally:
