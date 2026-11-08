@@ -156,23 +156,23 @@ async def get_trips_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts
     return TripHandler().get_trips_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
 
 # --------------- DRIVER ENDPOINTS ----------------
-@app.post("/api/v1/drivers")
+@app.post("/api/v1/drivers", status_code=201)
 async def create_driver(new_driver_data: DriverCreate):
     return DriverHandler().create_driver(new_driver_data)
 
-@app.get("/api/v1/drivers")
+@app.get("/api/v1/drivers", status_code=200)
 async def get_drivers(limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None):
     return DriverHandler().get_all_drivers(limit, offset, name, license_number)
 
-@app.get("/api/v1/drivers/{driver_id}")
+@app.get("/api/v1/drivers/{driver_id}", status_code=200)
 async def get_driver_by_id(driver_id: int):
     return DriverHandler().get_driver_by_id(driver_id)
 
-@app.put("/api/v1/drivers/{driver_id}")
+@app.put("/api/v1/drivers/{driver_id}", status_code=200)
 async def update_driver(driver_id: int, new_driver_data: DriverUpdate):
     return DriverHandler().update_driver(driver_id, new_driver_data)
 
-@app.delete("/api/v1/drivers/{driver_id}")
+@app.delete("/api/v1/drivers/{driver_id}", status_code=200)
 async def delete_driver(driver_id: int):
     return DriverHandler().delete_driver(driver_id)
 

@@ -14,25 +14,28 @@ class DriverDAO:
                                          POOL_CONFIG["maxconn"],
                                          **PG_DB_CONFIG)
 
-    def create_driver(self, new_driver_data: dict[str, Any]):
+    def create_driver(self, new_driver_data: dict[str, Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)    
             query = """
-            insert into driver(first_name, last_name, license_number, hired_at)
-            values (%(first_name)s, %(last_name)s,%(license_number)s, %(hired_at)s)
-            returning driver_id, first_name, last_name, license_number, hired_at""" 
+            INSERT INTO driver(first_name, last_name, license_number, hired_at)
+            VALUES (%(first_name)s, %(last_name)s,%(license_number)s, %(hired_at)s)
+            RETURNING driver_id, first_name, last_name, license_number, hired_at""" 
             
             params = dict(new_driver_data)            
             cur.execute(query, params)
             result = dict(cur.fetchone()) #type: ignore
             conn.commit()
             return result
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_all_drivers(self, limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None):
+    def get_all_drivers(self, limit: int, offset: int, name: Optional[str]=None, license_number: Optional[str]=None) -> dict:
         conn = self.pool.getconn()
         cur = conn.cursor(cursor_factory= DictCursor)
         try:
@@ -40,7 +43,7 @@ class DriverDAO:
             params: dict[str, Any] = {"limit": limit, "offset": offset}
 
             if name is not None and name.strip():
-                where_conditions.append("first_name ILIKE %(first_name)s OR last_name ILIKE %(last_name)s")
+                where_conditions.append("(first_name ILIKE %(first_name)s OR last_name ILIKE %(last_name)s)")
                 params["first_name"] = f"%{name.strip()}%"
                 params["last_name"] = f"%{name.strip()}%"
 
@@ -67,13 +70,15 @@ class DriverDAO:
 
             cur.execute(query, params)
             results = [dict(row) for row in cur.fetchall()]
+            if result is None:
+                return None #type: ignore
             
             return {"items": results, "limit": limit, "offset": offset, "count": result}
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_driver_by_id(self, driver_id: int):
+    def get_driver_by_id(self, driver_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -84,13 +89,15 @@ class DriverDAO:
             WHERE driver_id = %s"""
 
             cur.execute(query, (driver_id,))
-            result = cur.fetchone() # type: ignore
-            return dict(result) if result is not None else None #type: ignore
+            result = cur.fetchone()
+            if result is None:
+                return None #type: ignore
+            return dict(result)
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def update_driver(self, driver_id: int, new_driver_data: dict[str,Any]):
+    def update_driver(self, driver_id: int, new_driver_data: dict[str,Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -99,21 +106,25 @@ class DriverDAO:
             params["driver_id"] = driver_id
 
             query = f"""
-            update driver
-            set {set_sql}
-            where driver_id = %(driver_id)s
-            returning driver_id, first_name, last_name, license_number, hired_at"""
+            UPDATE driver
+            SET {set_sql}
+            WHERE driver_id = %(driver_id)s
+            RETURNING driver_id, first_name, last_name, license_number, hired_at"""
 
             cur.execute(query, params)
             result = cur.fetchone()
-
+            if result is None:
+                return None #type: ignore
             conn.commit()
-            return dict(result) if result is not None else None #type: ignore
+            return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def delete_driver(self, driver_id: int):
+    def delete_driver(self, driver_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -128,12 +139,15 @@ class DriverDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
     # ---------- HELPER FUNCTIONS -----------
-    def license_in_use(self, plate_number: str, driver_id: Optional[int] = None) -> bool:
+    def license_in_use(self, license_number: str, driver_id: Optional[int] = None) -> bool:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -142,14 +156,14 @@ class DriverDAO:
                 SELECT 1
                 FROM driver
                 WHERE TRIM(license_number) = %s"""
-                cur.execute(query, (plate_number,))
+                cur.execute(query, (license_number,))
             else:
                 query = """
                 SELECT 1
                 FROM driver
                 WHERE TRIM(license_number) = %s
                 AND driver_id != %s"""
-                cur.execute(query, (plate_number, driver_id,))
+                cur.execute(query, (license_number, driver_id,))
 
             result = cur.fetchone()
             return result is not None
@@ -164,6 +178,22 @@ class DriverDAO:
             query = """
             SELECT 1
             FROM vehicle_assignment
+            WHERE driver_id = %s
+            LIMIT 1"""
+            cur.execute(query, (driver_id,))   
+            result = cur.fetchone()
+            return result is not None
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    def driver_exists(self, driver_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+            query = """
+            SELECT 1
+            FROM driver
             WHERE driver_id = %s
             LIMIT 1"""
             cur.execute(query, (driver_id,))   
