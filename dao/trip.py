@@ -19,9 +19,9 @@ class TripDAO:
         try:
             cur = conn.cursor(cursor_factory=DictCursor)    
             query = """
-            insert into trip(vehicle_id, start_ts, end_ts, start_geom, end_geom, distance_km)
-            values (%(vehicle_id)s, %(start_ts)s, %(end_ts)s, ST_SetSRID(ST_GeomFromGeoJSON(%(start_geom)s), 4326), ST_SetSRID(ST_GeomFromGeoJSON(%(end_geom)s), 4326), %(distance_km)s)
-            returning trip_id, vehicle_id, start_ts, end_ts, ST_AsGeoJSON(start_geom)::json AS start_geom, ST_AsGeoJSON(end_geom)::json AS end_geom, distance_km""" 
+            INSERT INTO trip(vehicle_id, start_ts, end_ts, start_geom, end_geom, distance_km)
+            VALUES (%(vehicle_id)s, %(start_ts)s, %(end_ts)s, ST_SetSRID(ST_GeomFromGeoJSON(%(start_geom)s), 4326), ST_SetSRID(ST_GeomFromGeoJSON(%(end_geom)s), 4326), %(distance_km)s)
+            RETURNING trip_id, vehicle_id, start_ts, end_ts, ST_AsGeoJSON(start_geom)::json AS start_geom, ST_AsGeoJSON(end_geom)::json AS end_geom, distance_km""" 
             
             params = dict(new_trip_data)
             if "start_geom" in params:
@@ -33,11 +33,14 @@ class TripDAO:
             result = dict(cur.fetchone()) #type: ignore
             conn.commit()
             return result
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_all_trips(self, limit: int, offset: int, from_ts: datetime, to_ts: datetime, vehicle_id: Optional[int]=None):
+    def get_all_trips(self, limit: int, offset: int, vehicle_id: Optional[int]=None, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -78,7 +81,7 @@ class TripDAO:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_trip_by_id(self, trip_id: int):
+    def get_trip_by_id(self, trip_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -86,43 +89,59 @@ class TripDAO:
             params: dict[str, Any] = {"trip_id": trip_id}
             
             query = """
-            select trip_id, vehicle_id, start_ts, end_ts,
+            SELECT trip_id, vehicle_id, start_ts, end_ts,
             ST_AsGeoJSON(start_geom)::json AS start_geom, 
             ST_AsGeoJSON(end_geom)::json AS end_geom, distance_km
-            from trip
-            where trip_id = %(trip_id)s"""
+            FROM trip
+            WHERE trip_id = %(trip_id)s"""
                         
             cur.execute(query, params)
             result = cur.fetchone()
-            return dict(result) if result is not None else None #type: ignore
+            if result is None:
+                return None #type: ignore
+            return dict(result)
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def update_trip(self, trip_id: int, new_trip_data: dict[str, Any]):
+    def update_trip(self, trip_id: int, new_trip_data: dict[str, Any]) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
-            set_sql = ", ".join([f"{field} = %({field})s" for field in new_trip_data.keys()])
             params = dict(new_trip_data)
             params["trip_id"] = trip_id
 
+            set_clauses = []
+            for field, value in new_trip_data.items():
+                if field in ("start_geom", "end_geom"):
+                    params[field] = json.dumps(value)
+                    set_clauses.append(f"{field} = ST_SetSRID(ST_GeomFromGeoJSON(%({field})s), 4326)")
+                else:
+                    set_clauses.append(f"{field} = %({field})s")
+
+            set_sql = ", ".join(set_clauses)
+
             query = f"""
-            update trip
-            set {set_sql}
-            where trip_id = %(trip_id)s
-            returning trip_id, vehicle_id, start_ts, end_ts, ST_AsGeoJSON(start_geom)::json AS start_geom, ST_AsGeoJSON(end_geom)::json AS end_geom, distance_km"""
+            UPDATE trip
+            SET {set_sql}
+            WHERE trip_id = %(trip_id)s
+            RETURNING trip_id, vehicle_id, start_ts, end_ts, ST_AsGeoJSON(start_geom)::json AS start_geom, ST_AsGeoJSON(end_geom)::json AS end_geom, distance_km"""
 
             cur.execute(query, params)
             result = cur.fetchone()
-
+            if result is None:
+                return None #type: ignore
+            
             conn.commit()
-            return dict(result) if result is not None else None #type: ignore
+            return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def delete_trip(self, trip_id: int):
+    def delete_trip(self, trip_id: int) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -136,11 +155,14 @@ class TripDAO:
                 return None  #type: ignore
             conn.commit()
             return dict(result)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cur.close()
             self.pool.putconn(conn)
 
-    def get_trips_by_vehicle(self, vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None):
+    def get_trips_by_vehicle(self, vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None) -> dict:
         conn = self.pool.getconn()
         try:
             cur = conn.cursor(cursor_factory=DictCursor)
@@ -194,6 +216,23 @@ class TripDAO:
             WHERE vehicle_id = %s"""
 
             cur.execute(query, (vehicle_id,))
+            result = cur.fetchone()
+            return result is not None
+        finally:
+            cur.close()
+            self.pool.putconn(conn)
+
+    def trip_exists(self, trip_id: int) -> bool:
+        conn = self.pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=DictCursor)
+
+            query = """
+            SELECT 1
+            FROM trip
+            WHERE trip_id = %s"""
+
+            cur.execute(query, (trip_id,))
             result = cur.fetchone()
             return result is not None
         finally:

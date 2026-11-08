@@ -131,27 +131,27 @@ async def get_pings_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts
     return LocationHandler().get_pings_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
 
 # --------------- TRIP ENDPOINTS ----------------
-@app.post("/api/v1/trips")
+@app.post("/api/v1/trips", status_code=201)
 async def create_trip(new_trip_data: TripCreate):
     return TripHandler().create_trip(new_trip_data)
 
-@app.get("/api/v1/trips")
-async def get_trips(limit: int, offset: int, from_ts: datetime, to_ts: datetime, vehicle_id: Optional[int]=None, ):
-    return TripHandler().get_all_trips(limit, offset, from_ts, to_ts, vehicle_id)
+@app.get("/api/v1/trips", status_code=200)
+async def get_trips(limit: int, offset: int, vehicle_id: Optional[int]=None, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None):
+    return TripHandler().get_all_trips(limit, offset, vehicle_id, from_ts, to_ts)
 
-@app.get("/api/v1/trips/{trip_id}")
+@app.get("/api/v1/trips/{trip_id}", status_code=200)
 async def get_trip_by_id(trip_id:int):
     return TripHandler().get_trip_by_id(trip_id)
 
-@app.put("/api/v1/trips/{trip_id}")
+@app.put("/api/v1/trips/{trip_id}", status_code=200)
 async def update_trip(trip_id: int, new_trip_data: TripUpdate):
     return TripHandler().update_trip(trip_id, new_trip_data)
 
-@app.delete("/api/v1/trips/{trip_id}")
+@app.delete("/api/v1/trips/{trip_id}", status_code=200)
 async def delete_trip(trip_id: int):
     return TripHandler().delete_trip(trip_id)
 
-@app.get("/api/v1/vehicles/{vehicle_id}/trips")
+@app.get("/api/v1/vehicles/{vehicle_id}/trips", status_code=200)
 async def get_trips_by_vehicle(vehicle_id: int, limit: int, offset: int, from_ts: Optional[datetime]=None, to_ts: Optional[datetime]=None):
     return TripHandler().get_trips_by_vehicle(vehicle_id, limit, offset, from_ts, to_ts)
 

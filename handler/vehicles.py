@@ -64,24 +64,24 @@ class VehicleHandler:
         dao = VehicleDAO()
         try:
             if isinstance(new_vehicle_data, VehicleCreate):
-                new_v = new_vehicle_data
+                new_vehicle = new_vehicle_data.model_dump(exclude_none=True)
             else:
-                new_v = VehicleCreate.model_validate(new_vehicle_data)
+                new_vehicle = VehicleCreate.model_validate(new_vehicle_data).model_dump(exclude_none=True)
         except ValidationError:
             raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape")
 
-        if not dao.vehicle_status_exists(new_v.vehicle_status_id) or not dao.vehicle_type_exists(new_v.vehicle_type_id):
+        if not dao.vehicle_status_exists(new_vehicle["vehicle_status_id"]) or not dao.vehicle_type_exists(new_vehicle["vehicle_type_id"]):
             raise HTTPException(status_code=404, detail="Referenced vehicle_type_id or vehicle_status_id does not exist.")
 
-        if dao.plate_in_use(new_v.plate_number):
+        if dao.plate_in_use(new_vehicle["plate_number"]):
             raise HTTPException(status_code=409, detail="plate_number already exists.")
 
-        if new_v.make is not None:
-            new_v.make.strip()
-        if new_v.model is not None:
-            new_v.model.strip()
+        if new_vehicle["make"] is not None:
+            new_vehicle["make"] = new_vehicle["make"].strip()
+        if new_vehicle["model"] is not None:
+            new_vehicle["model"] = new_vehicle["model"].strip()
         try:
-            return dao.create_vehicle(new_v.model_dump())
+            return dao.create_vehicle(new_vehicle)
         except Exception:
             raise HTTPException(status_code=400, detail="Malformed JSON or invalid payload shape.")
 
