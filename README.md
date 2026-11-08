@@ -44,6 +44,28 @@ Database-Management-Project/\
 `│   ├── extract.py`\
 `│   ├── transform.py`\
 `│   └── load.py`
+`├── backend/`\
+`│   ├── config/`\
+`│   │   ├── __init__.py`\
+`│   │   ├── dbconfig.py`\
+`│   ├── dao/`\
+`│   │   ├── driver.py`\
+`│   │   ├── location_ping.py`\
+`│   │   ├── parking_area.py`\
+`│   │   ├── road_segments.py`\
+`│   │   ├── trip.py`\
+`│   │   ├── vehicle_assignment.py`\
+`│   │   ├── vehicles.py`\
+`│   ├── handler/`\
+`│   │   ├── driver.py`\
+`│   │   ├── location_ping.py`\
+`│   │   ├── parking_area.py`\
+`│   │   ├── road_segments.py`\
+`│   │   ├── trip.py`\
+`│   │   ├── vehicle_assignment.py`\
+`│   │   ├── vehicles.py`\
+`│   ├── main.py`\
+`│   └── requirements.txt`
 
 # Database Environment Variables
 Set these before running the ETL scripts:
