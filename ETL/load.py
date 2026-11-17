@@ -190,6 +190,26 @@ def pg_type_for(series: pd.Series) -> str:
 
     return "text"
 
+def resync_sequences(conn):
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT s.relname AS seq_name, t.relname AS tbl_name, a.attname AS col_name
+            FROM pg_class s
+            JOIN pg_depend d ON d.objid = s.oid
+            JOIN pg_class t  ON t.oid   = d.refobjid
+            JOIN pg_attribute a
+              ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+            WHERE s.relkind = 'S' AND d.deptype = 'a'
+        """)
+        for seq_name, tbl_name, col_name in cur.fetchall():
+            cur.execute(
+                f'SELECT setval(%s, '
+                f'COALESCE((SELECT MAX("{col_name}") FROM "{tbl_name}"), 0) + 1, '
+                f'false)',
+                (seq_name,),
+            )
+    conn.commit()
+
 # Loops through load_order, clears target tables, and loads transformed dataframes
 def load_all(transformed: dict[str, pd.DataFrame], conn, skip_existing: bool = True) -> dict[str, int]:
     report: dict[str, int] = {}
@@ -217,6 +237,8 @@ def load_all(transformed: dict[str, pd.DataFrame], conn, skip_existing: bool = T
             report[table] = inserted
             conn.commit()
             print(f"Loaded '{table}': {inserted} rows")
+
+            resync_sequences(conn)
         except Exception:
             conn.rollback()
             raise
